@@ -1,7 +1,7 @@
 import os
 import logging
 from telegram import Update, ReplyKeyboardMarkup
-from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
+from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackContext
 
 # Настройка логирования
 logging.basicConfig(
@@ -12,37 +12,37 @@ logging.basicConfig(
 # Получаем токен бота
 BOT_TOKEN = os.getenv('BOT_TOKEN')
 
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+def start(update: Update, context: CallbackContext):
     keyboard = [
         ['🎅 Создать игру', '🎄 Присоединиться к игре'],
-        ['❓ Помощь']
+        ['📋 Мои игры', '✏️ Мои пожелания', '❓ Помощь']
     ]
     reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
     
-    await update.message.reply_text(
+    update.message.reply_text(
         "🎅 *Добро пожаловать в Тайного Санту!*\n\n"
-        "Бот успешно запущен и работает! 🚀\n\n"
+        "🤖 *Бот успешно запущен и работает!*\n\n"
         "Выберите действие:",
         reply_markup=reply_markup,
         parse_mode='Markdown'
     )
 
-async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+def help_command(update: Update, context: CallbackContext):
     help_text = """
 *🎅 Тайный Санта Бот*
 
-🤖 *Бот работает исправно!*
+✅ *Бот работает исправно!*
 
 *Доступные функции:*
-✅ Главное меню
-✅ Кнопки навигации  
-✅ Обработка сообщений
+🎅 Главное меню
+🎄 Навигация по кнопкам  
+📋 Базовая функциональность
 
 *Скоро будут добавлены:*
-🎅 Создание игр
-🎄 Присоединение к играм
-📋 Управление играми
-✏️ Пожелания подарков
+• Создание игр
+• Присоединение к играм
+• Жеребьевка
+• Система пожеланий
 
 *Команды:*
 /start - главное меню
@@ -50,27 +50,41 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 *Приятной игры!* 🎄
     """
-    await update.message.reply_text(help_text, parse_mode='Markdown')
+    update.message.reply_text(help_text, parse_mode='Markdown')
 
-async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
+def handle_message(update: Update, context: CallbackContext):
     text = update.message.text
     
     if text == '🎅 Создать игру':
-        await update.message.reply_text(
+        update.message.reply_text(
             "🎅 *Создание игры*\n\n"
-            "Функция создания игр будет доступна в ближайшем обновлении!",
+            "Функция будет доступна в следующем обновлении!\n"
+            "Следите за новостями 🎄",
             parse_mode='Markdown'
         )
     elif text == '🎄 Присоединиться к игре':
-        await update.message.reply_text(
+        update.message.reply_text(
             "🎄 *Присоединение к игре*\n\n" 
-            "Функция присоединения к играм будет доступна в ближайшем обновлении!",
+            "Функция будет доступна в следующем обновлении!\n"
+            "Следите за новостями 🎁",
+            parse_mode='Markdown'
+        )
+    elif text == '📋 Мои игры':
+        update.message.reply_text(
+            "📋 *Мои игры*\n\n"
+            "Функция будет доступна в следующем обновлении!",
+            parse_mode='Markdown'
+        )
+    elif text == '✏️ Мои пожелания':
+        update.message.reply_text(
+            "✏️ *Мои пожелания*\n\n"
+            "Функция будет доступна в следующем обновлении!",
             parse_mode='Markdown'
         )
     elif text == '❓ Помощь':
-        await help_command(update, context)
+        help_command(update, context)
     else:
-        await update.message.reply_text(
+        update.message.reply_text(
             "Используйте кнопки меню или введите /start",
             reply_markup=ReplyKeyboardMarkup([['/start']], resize_keyboard=True)
         )
@@ -82,30 +96,38 @@ def main():
     
     if not BOT_TOKEN:
         print("❌ ОШИБКА: BOT_TOKEN не найден!")
-        print("Проверьте переменные окружения")
+        print("Проверьте переменные окружения в Railway")
         return
     
     print("✅ BOT_TOKEN найден")
     
     try:
-        # Создаем Application
-        application = Application.builder().token(BOT_TOKEN).build()
+        # Создаем Updater (старый стиль, но стабильный)
+        updater = Updater(BOT_TOKEN, use_context=True)
+        
+        # Получаем диспетчер
+        dp = updater.dispatcher
         
         # Регистрируем обработчики
-        application.add_handler(CommandHandler("start", start))
-        application.add_handler(CommandHandler("help", help_command))
-        application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
+        dp.add_handler(CommandHandler("start", start))
+        dp.add_handler(CommandHandler("help", help_command))
+        dp.add_handler(MessageHandler(Filters.text & ~Filters.command, handle_message))
         
         print("✅ Бот инициализирован")
         print("🎅 Запускаю polling...")
-        print("🤖 Бот готов к работе!")
         
         # Запускаем бота
-        application.run_polling()
+        updater.start_polling()
+        print("🤖 Бот успешно запущен и работает!")
+        print("💫 Ожидаю сообщения...")
+        
+        # Бот работает пока не остановим
+        updater.idle()
         
     except Exception as e:
         print(f"❌ Критическая ошибка: {e}")
-        print("💡 Попробуйте использовать Python 3.11")
+        import traceback
+        traceback.print_exc()
 
 if __name__ == '__main__':
     main()
