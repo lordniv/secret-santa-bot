@@ -1,25 +1,32 @@
 import os
 import logging
 from telegram import Update, ReplyKeyboardMarkup
-from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackContext
+from telegram.ext import (
+    Application, 
+    CommandHandler, 
+    MessageHandler, 
+    filters, 
+    ContextTypes
+)
 
 # Настройка логирования
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     level=logging.INFO
 )
+logger = logging.getLogger(__name__)
 
 # Получаем токен бота
 BOT_TOKEN = os.getenv('BOT_TOKEN')
 
-def start(update: Update, context: CallbackContext):
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = [
         ['🎅 Создать игру', '🎄 Присоединиться к игре'],
         ['📋 Мои игры', '✏️ Мои пожелания', '❓ Помощь']
     ]
     reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
     
-    update.message.reply_text(
+    await update.message.reply_text(
         "🎅 *Добро пожаловать в Тайного Санту!*\n\n"
         "Я помогу вам организовать обмен подарками.\n\n"
         "Выберите действие:",
@@ -27,7 +34,7 @@ def start(update: Update, context: CallbackContext):
         parse_mode='Markdown'
     )
 
-def help_command(update: Update, context: CallbackContext):
+async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     help_text = """
 *🎅 Как организовать Тайного Санту:*
 
@@ -42,13 +49,13 @@ def help_command(update: Update, context: CallbackContext):
 
 *Приятной игры!* 🎄
     """
-    update.message.reply_text(help_text, parse_mode='Markdown')
+    await update.message.reply_text(help_text, parse_mode='Markdown')
 
-def handle_message(update: Update, context: CallbackContext):
+async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = update.message.text
     
     if text == '🎅 Создать игру':
-        update.message.reply_text(
+        await update.message.reply_text(
             "🎅 *Создание игры*\n\n"
             "Чтобы создать игру Тайного Санты:\n"
             "1. Придумайте название игры\n"
@@ -58,7 +65,7 @@ def handle_message(update: Update, context: CallbackContext):
             parse_mode='Markdown'
         )
     elif text == '🎄 Присоединиться к игре':
-        update.message.reply_text(
+        await update.message.reply_text(
             "🎄 *Присоединение к игре*\n\n" 
             "Чтобы присоединиться к существующей игре:\n"
             "1. Получите код комнаты от организатора\n"
@@ -68,14 +75,14 @@ def handle_message(update: Update, context: CallbackContext):
             parse_mode='Markdown'
         )
     elif text == '📋 Мои игры':
-        update.message.reply_text(
+        await update.message.reply_text(
             "📋 *Мои игры*\n\n"
             "Здесь вы увидите все ваши активные игры Тайного Санты.\n\n"
             "Пока нет активных игр. Создайте новую игру!",
             parse_mode='Markdown'
         )
     elif text == '✏️ Мои пожелания':
-        update.message.reply_text(
+        await update.message.reply_text(
             "✏️ *Мои пожелания*\n\n"
             "Расскажите о ваших предпочтениях в подарках:\n"
             "- Любимые жанры книг/фильмов\n" 
@@ -86,9 +93,9 @@ def handle_message(update: Update, context: CallbackContext):
             parse_mode='Markdown'
         )
     elif text == '❓ Помощь':
-        help_command(update, context)
+        await help_command(update, context)
     else:
-        update.message.reply_text(
+        await update.message.reply_text(
             "Используйте кнопки меню или введите /start",
             reply_markup=ReplyKeyboardMarkup([['/start']], resize_keyboard=True)
         )
@@ -102,25 +109,21 @@ def main():
         return
     
     try:
-        # Создаем Updater и передаем ему токен
-        updater = Updater(token=BOT_TOKEN, use_context=True)
-        
-        # Получаем диспетчер для регистрации обработчиков
-        dispatcher = updater.dispatcher
+        # Создаем Application
+        application = Application.builder().token(BOT_TOKEN).build()
         
         # Регистрируем обработчики команд
-        dispatcher.add_handler(CommandHandler("start", start))
-        dispatcher.add_handler(CommandHandler("help", help_command))
+        application.add_handler(CommandHandler("start", start))
+        application.add_handler(CommandHandler("help", help_command))
         
         # Регистрируем обработчик текстовых сообщений
-        dispatcher.add_handler(MessageHandler(Filters.text & ~Filters.command, handle_message))
+        application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
         
         # Запускаем бота
         print("✅ Бот успешно запущен!")
         print("🤖 Ожидаю сообщения...")
         
-        updater.start_polling()
-        updater.idle()
+        application.run_polling()
         
     except Exception as e:
         print(f"❌ Ошибка при запуске бота: {e}")
